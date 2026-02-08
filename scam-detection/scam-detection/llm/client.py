@@ -12,15 +12,20 @@ class LLMClient:
        self.model_name = model_name
        self.max_retries = max_retries
        self.retry_delay = retry_delay
-       self.client = genai.Client(api_key=GEMINI_API_KEY)
+       
+       # Configure the API key
+       genai.configure(api_key=GEMINI_API_KEY)
+       
+       # Create a GenerativeModel instance instead of Client
+       self.client = genai.GenerativeModel(self.model_name)
 
    def call(self, prompt: str, **kwargs) -> str:
        """Send prompt to Gemini API"""
        for attempt in range(self.max_retries + 1):
            try:
-               response = self.client.models.generate_content(
+               # Use generate_content directly on the model instance
+               response = self.client.generate_content(
                    contents=prompt,
-                   model=self.model_name,
                    **kwargs
                )
                if response and response.text:
@@ -30,6 +35,7 @@ class LLMClient:
               
            except Exception as e:
                if attempt == self.max_retries:
+                   logger.error(f"API call failed after {self.max_retries + 1} attempts: {e}")
                    raise Exception(f"API call failed after {self.max_retries + 1} attempts: {e}")
               
                time.sleep(self.retry_delay * (2 ** attempt))
